@@ -1,4 +1,5 @@
 import numpy as np
+import random as rd
 
 class NeuralNetwork:
 	
@@ -21,42 +22,76 @@ class NeuralNetwork:
 			try:
 				data.append(self.sigmoid(np.dot(w[0],data[-1]) + w[1]))
 			except ValueError:
-				print("Erreur sur les valeurs d'entrée.")
-
+				print("Erreur sur les valeurs.")
 		return data
+
 
 	def cost(self, data, wanted):
 		return (data-wanted)**2
 
 	def backprop(self, data, wanted):
 		
-		delta = [self.cost(data[-1], wanted)]
+		a=self.cost(data[-1], wanted)
+		delta = [a]
+		deltaP = [self.cost(data[-1], wanted)]
 
 		for i in range(1, len(data)):
 
 			delta.append( self.Dsigm(data[-i-1])*np.dot(self.weights[-i][0].T, delta[-1]) )
+			deltaP.append( np.dot(self.weights[-i][1], delta[-1].T) )
 
 		delta.reverse()
-
-		print(self.weights, "\n\n")
-		print(delta, "\n\n")
-
+		deltaP.reverse()
 		
 		for i in range(len(self.weights)):
 			for j in range(len(self.weights[i][0])):
 				for k in range(len(self.weights[i][0][j])):
-					self.weights[i][0][j,k] *= data[i][k] * self.app * delta[i+1][j]
+					self.weights[i][0][j,k] += data[i][k] * self.app * delta[i+1][j]
 
-		print(self.weights)
+		for i in range(len(self.weights)):
+			for j in range(len(self.weights[i][1])):
+				for k in range(len(self.weights[i][1][j])):
+					self.weights[i][1][j,k] +=  self.app * delta[i+1][j]
 
-		return 0
+		return a
+
+	def train(self):
+		a= int(rd.getrandbits(1))
+		b= int(rd.getrandbits(1))
+		inpuT = np.array([[a],[b]])
+		output = self.forward([inpuT])
+		wanted = np.array([[a != b], [a^b]])
+
+		a = self.backprop(output, wanted)
+		return a
+
+
+	def loop(self, n, e = 50):
+		i=0
+		for k in range(n):
+			i+=1
+			if i > e:
+				print(self.train(), "numero", k)
+				i=0
+			else:
+				self.train()
 
 
 
 
 
-test = NeuralNetwork(3,4,2)
+
+
+first = NeuralNetwork(2,4,4,2)
+first.loop(30000, 1000)
+print("les test!")
+print(first.forward([np.array([[1], [1]])])[-1])
+print(first.forward([np.array([[0], [1]])])[-1])
+print(first.forward([np.array([[1], [0]])])[-1])
+print(first.forward([np.array([[0], [0]])])[-1])
 #for k in test.weights:
 #	print(k)
 
-print( "\n\n\n\n", test.backprop(test.forward([np.random.random((3, 1))]), np.array([[0.7], [0.]]))     )
+#print( "\n\n\n\n", test.backprop(test.forward([np.random.random((3, 1))]), np.array([[0.7], [0.]])) )
+
+#http://www.anyflo.com/bret/cours/rn/rn5.htm#exemple
