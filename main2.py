@@ -57,36 +57,41 @@ class NeuralNetwork:
         Fonction de cout
         squared error function
         """
-        return (1/2)*(data-wanted)**2
+        return 0.5*(data-wanted)**2
 
     def backprop(self, data, wanted):
-        pass
+
+        miss = [self.cost(data, wanted)]
+
+        for k in range(1,len(self.weights)-1):
+            
+            der=data[-k]*(1.0-data[-k])
+            chgt=miss[-1]*der
+
+            delta= self.app * np.dot(chgt, data[-k-1].T)
+
+            self.weights[-k][0] += delta
+            miss.append(np.dot(self.weights[-k][0].T, miss[-1]))
+
+        return 0
 
 
       
-if __name__ == "__main__":
+#if __name__ == "__main__":
     
-    N = NeuralNetwork(3,4,2)
+N = NeuralNetwork(3,4,4,2)
 
-    print(N.forward(np.array([[2],[3],[4]]))[-1])
+a = N.forward(np.array([[2],[3],[4]]))
+print(a)
+for k in N.weights:
+    print("\n\n")
+    print(k[0])
 
+print("C partie!")
 
+N.backprop(a, np.array([[0.3],[0.5]]))
+print("Done")
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        
+for k in N.weights:
+    print("\n\n")
+    print(k[0])
