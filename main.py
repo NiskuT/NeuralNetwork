@@ -73,11 +73,12 @@ class NeuralNetwork:
 
             chgt=miss[-1]*der
 
-            deltaBias = self.app*np.dot
+            deltaBias = self.app*chgt
             delta= self.app * np.dot(chgt, data[-k-1].T)
 
             self.weights[-k][0] += delta
-            print("Modif sur le poids:", len(self.weights)-k)
+            self.weights[-k][1] += deltaBias
+            #print("Modif sur le poids:", len(self.weights)-k)
             miss.append(np.dot(self.weights[-k][0].T, miss[-1]))
 
         return 0
