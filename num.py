@@ -62,10 +62,11 @@ plt.imshow(np.reshape(mesImages[4][0], (28,28)))
 plt.show()
 '''
 network = nn.NeuralNetwork()
-network.initWeights(784,16,16,10)
 '''
+network.initWeights(784,16,16,10)
+
 u=0
-for t in range(10):
+for t in range(20):
     for data in mesImages:
         want = np.zeros((10,1))
         want[data[1]] = 1
@@ -80,7 +81,7 @@ network.saveParam()
 network.openParam()
 
 print("Phase de test")
-
+'''
 for k in range(10):
     a = rd.randint(10,50000)
     b=network.forward(mesImages[a][0])
@@ -89,3 +90,17 @@ for k in range(10):
     
     print(maxIndex(b))
     plt.show()
+'''
+mesTests = readImgData('t10k-images.idx3-ubyte', 't10k-labels.idx1-ubyte')
+
+k,l=0,0
+for data in mesTests:
+
+    p = network.forward(data[0])
+    if data[1] == maxIndex(p)[0]:
+        k+=1
+    l+=1
+
+print("TAUX DE REUSSITE: ", (k/l)*100, "%")
+
+
