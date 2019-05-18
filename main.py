@@ -3,12 +3,21 @@
 
 import numpy as np
 import random as rd
+import pickle as pk
 
 
 class NeuralNetwork:
     
-    def __init__(self, *args):
+    def __init__(self):
         """
+            app: taux d'apprentissage du réseau
+        """      
+        
+
+        self.app = 0.005
+
+    def initWeights(self, *args):
+        '''
             Entrer en paramètre le nombre de neuronnes par couche
             
             Le tableau weights contient deux colonnes:
@@ -17,13 +26,11 @@ class NeuralNetwork:
             et la ligne l les poids reliés aux neuronnes d'arrivée l
                 
             colonne 1: les biais en matrice colonne
-            
-            app: taux d'apprentissage du réseau
-        """      
-        self.numOfLayer = len(args)
+        '''
+
         self.weights = []
         self.bias = []
-        self.app = 0.005
+        self.numOfLayer = len(args)
         
         for k in range(1,len(args)):
             
@@ -110,27 +117,57 @@ class NeuralNetwork:
 
         self.updateWeightsBasic(inpuT, wanted)
 
+    def imgTrain(self , training_data , epochs, test_data=None):
+
+        if test_data:
+            n_test = len(test_data)
+            n = len(training_data)
+        for j in xrange(epochs):
+            random.shuffle(training_data)
+            mini_batches = [training_data[k:k+mini_batch_size]
+        for k in xrange(0, n, mini_batch_size)]
+            for mini_batch in mini_batches:
+                self.update_mini_batch(mini_batch , eta)
+
+    def saveParam(self):
+        '''
+        Sauvergarde les poids et biais en .txt
+        '''
+
+        with open("weights.txt", "wb") as fp:
+            pk.dump(self.weights, fp)
+        with open("bias.txt", "wb") as fp:
+            pk.dump(self.bias, fp)
 
 
-      
-#if __name__ == "__main__":
+    def openParam(self):
+        '''
+        Ouvre des poids et biais enregistrés dans un fichier .txt
+        '''
+        with open("weights.txt", "rb") as fp:
+            self.weights = pk.load(fp)
+        with open("bias.txt", "rb") as fp:
+            self.bias = pk.load(fp)
+
+    def showW(self):
+        print("Les poids:\n")
+        for w in self.weights:
+            print(w,'\n')
+        print("Les biais:\n")
+        for b in self.bias:
+            print(b,'\n')
+
+'''
     
-N = NeuralNetwork(2,4,1)
+N = NeuralNetwork()
+N.openParam()
+N.showW()
 
-k=0
-l=1000000
-while k<l:
-	N.train()
-	k+=1
-	if k%100==0:
-		print((k/l)*100, "%")
-
+N.initWeights(2,4,1)
 
 print(N.forward(np.array([[40],[60]])))
 print(N.forward(np.array([[60],[40]])))
 print(N.forward(np.array([[35],[60]])))
 print(N.forward(np.array([[15],[20]])))
+
 '''
-for k in N.weights:
-    print("\n\n")
-    print(k[0])'''
