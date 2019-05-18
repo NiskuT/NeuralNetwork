@@ -20,21 +20,48 @@ class NeuralNetwork:
             
             app: taux d'apprentissage du réseau
         """      
-        
+        self.numOfLayer = len(args)
         self.weights = []
-        self.app = 0.05
+        self.bias = []
+        self.app = 0.005
         
         for k in range(1,len(args)):
             
-            self.weights.append([(2*np.random.random((args[k],args[(k-1)]))-1), (2*np.random.random((args[k],1))-1)])            
+            self.weights.append( (2*np.random.random((args[k],args[(k-1)]))-1) )
+            self.bias.append(   (2*np.random.random((args[k],1))-1)   )
 
 
 
     def sigmoid(self, x):
         return (1/(1+np.exp(-x)))
 
+    def Dsigm(self, x):
+        ''' Dérivée de la sigmoid '''
+        return x*(1.0-x)
 
-    def forward(self, inp):
+    def cost(self, data, wanted):
+        """ 
+        Fonction de cout
+        squared error function
+        """
+        return (data - wanted)
+
+    def updateWeightsBasic(self, inp, wanted):
+
+        deltaW, deltaB = self.backprop(inp, wanted)
+        #self.weights = [self.app*(w-delta) for w, delta in zip(self.weights, deltaW)]
+        #self.bias = [self.app*(b-delta) for b, delta in zip(self.bias, deltaB)]
+        for w in range(self.numOfLayer-1):
+            self.weights[w] -= self.app*deltaW[w]
+
+        for b in range(self.numOfLayer-1):
+            self.bias[b] -= self.app*deltaB[b]
+
+
+
+
+
+    def forward(self, inp, training=False):
         """
             Fonction principal du réseau:
             Prend en paramètres un ndarray colonne de meme taille que la couche 1
@@ -44,62 +71,66 @@ class NeuralNetwork:
         
         """
         data = [inp]
-        for w in self.weights:
+        for w,b in zip(self.weights, self.bias):
             try:
-                data.append(self.sigmoid(np.dot(w[0],data[-1]) + w[1]))
+                data.append( self.sigmoid(np.dot(w,data[-1]) + b) )
             except ValueError:
                 print("Erreur sur les valeurs.")
-                
-        return data
+        if training:        
+            return data
+        else:
+            return data[-1]
 
-    def cost(self, data, wanted):
-        """ 
-        Fonction de cout
-        squared error function
-        """
-        r= data-wanted
-        a=r*r
-        b=0.5*a
-        return b
+
 
     def backprop(self, data, wanted):
 
-        miss = [self.cost(data[-1], wanted)]
-
-        for k in range(1,len(self.weights)+1):
-            
-            der=data[-k]*(1.0-data[-k])
+        deltaW = [np.zeros(w.shape) for w in self.weights]
+        deltaB = [np.zeros(b.shape) for b in self.bias] 
 
 
-            chgt=miss[-1]*der
+        activity = self.forward(data, True)
+        delta = self.cost(activity[-1], wanted) * self.Dsigm(activity[-1])
 
-            deltaBias = self.app*chgt
-            delta= self.app * np.dot(chgt, data[-k-1].T)
+        deltaB[-1] = delta
+        deltaW[-1] = np.dot(delta, activity[-2].T)
 
-            self.weights[-k][0] += delta
-            self.weights[-k][1] += deltaBias
-            #print("Modif sur le poids:", len(self.weights)-k)
-            miss.append(np.dot(self.weights[-k][0].T, miss[-1]))
+        for k in range(2, self.numOfLayer):
+            delta = np.dot(self.weights[-k+1].T, delta) * self.Dsigm(activity[-k])
+            deltaB[-k] = delta
+            deltaW[-k] = np.dot(delta, activity[-k-1].T)
 
-        return 0
+        return (deltaW, deltaB)
+
+    def train(self):
+        a= rd.randrange(10,100)
+        b= rd.randrange(10,100)
+        inpuT = np.array([[a],[b]])
+        wanted = np.array([[a<b]])
+
+        self.updateWeightsBasic(inpuT, wanted)
+
 
 
       
 #if __name__ == "__main__":
     
-N = NeuralNetwork(3,4,4,2)
+N = NeuralNetwork(2,4,1)
 
-a = N.forward(np.array([[2],[3],[4]]))
-print(a)
+k=0
+l=1000000
+while k<l:
+	N.train()
+	k+=1
+	if k%100==0:
+		print((k/l)*100, "%")
+
+
+print(N.forward(np.array([[40],[60]])))
+print(N.forward(np.array([[60],[40]])))
+print(N.forward(np.array([[35],[60]])))
+print(N.forward(np.array([[15],[20]])))
+'''
 for k in N.weights:
     print("\n\n")
-    print(k[0])
-
-print("C partie!")
-
-N.backprop(a, np.array([[0.3],[0.5]]))
-print("Done")
-
-for k in N.weights:
-    print("\n\n")
-    print(k[0])
+    print(k[0])'''
