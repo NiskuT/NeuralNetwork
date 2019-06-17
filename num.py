@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 import numpy as np
 import NNV2 as nn
@@ -77,8 +76,8 @@ network.saveParam()
 network.openParam()
 
 print("Phase de test")
-'''
-for k in range(10):
+
+for k in range(1):
     a = rd.randint(10,50000)
     b=network.forward(mesImages[a][0])
     plt.figure()
@@ -99,4 +98,4 @@ for data in mesTests:
 
 print("TAUX DE REUSSITE: ", (k/l)*100, "%")
 
-
+'''
