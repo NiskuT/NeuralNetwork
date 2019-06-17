@@ -57,6 +57,15 @@ class NeuralNetwork:
         """
         return (data - wanted)
 
+    def maxIndex(self, array):
+        x,y=0,0
+        tab = array.tolist()
+        for k in range(len(tab)):
+            if tab[k][0]>y:
+                y=tab[k][0]
+                x=k
+        return x,y
+
 
 
     def updateWeightsBasic(self, inp, wanted):
