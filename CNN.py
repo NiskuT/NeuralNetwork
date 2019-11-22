@@ -2,6 +2,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+import time as t
 
 
 class CNN:
@@ -81,8 +82,11 @@ class CNN:
     
     def poolingBackprop(self, outputGrad):
         
+        #regarder np.amax
+        
         firstLine, lastLine, firstCol,lastCol,dim = self.cachePooling[-1].pop()
-        inputP = self.cachePooling.pop()
+        inputP = self.cachePooling[-1]
+        #inputP = self.cachePooling.pop()
         
         inputGrad = np.zeros((inputP[0].shape[0],inputP[0].shape[1], len(inputP)))
 
@@ -92,8 +96,10 @@ class CNN:
             for i in range(inputP[k].shape[0]):
                 
                 for j in range(inputP[k].shape[1]):
+                    aff1(inputP[k][(i//dim)*dim:(i//dim+1)*dim, (j//dim)*dim:(j//dim + 1)*dim])
+                    t.sleep(0.2)
                     
-                    if inputP[k][i,j]==np.max(inputP[k][(i//dim)*dim:(i//dim+dim)*dim, (j//dim)*dim:(j//dim + dim)*dim]):
+                    if inputP[k][i,j]==np.max(inputP[k][(i//dim)*dim:(i//dim+1)*dim, (j//dim)*dim:(j//dim + 1)*dim]):
                         inputGrad[i,j,k]=outputGrad[i//dim,j//dim,k]
         return inputGrad[firstLine:lastLine,   firstCol:lastCol,  : ]
         
@@ -110,6 +116,8 @@ class CNN:
             filterBank: une matrice de taille n,n,y avec n la dimension des filtres
             et y le nombre de filtres
         '''
+        
+        ### regarder flatten()
 
         # verification des filtres
         if filterBank.shape[0] != filterBank.shape[1] or \
@@ -144,6 +152,19 @@ class CNN:
                 except IndexError:
                     out[k,i]+=np.sum(img[k:k+filter1.shape[0], i:i+filter1.shape[1]]*filter1)
         return out
+    
+    
+def aff(a):
+    for k in range(a.shape[0]):
+        for i in range(a.shape[1]):
+            print(int(a[k,i,0]), end='   ')
+        print()
+        
+def aff1(a):
+    for k in range(a.shape[0]):
+        for i in range(a.shape[1]):
+            print(int(a[k,i]), end='   ')
+        print()
         
 a = CNN()
 im = plt.imread("plage.jpg")
@@ -171,8 +192,6 @@ def filtre(k):
         return a.convOfSingleFilter(im, filterL[k])
     print("filtre ",k)
     return a.convOfSingleFilter(filtre(k-1), filterL[k])
-
-
 plt.imshow(a.pooling("m", np.array(im) , 7)[:,:,1])
 plt.figure()
 plt.imshow(a.pooling("m", np.array(im) , 7)[:,:,0])
