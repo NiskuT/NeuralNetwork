@@ -96,8 +96,8 @@ class CNN:
             for i in range(inputP[k].shape[0]):
                 
                 for j in range(inputP[k].shape[1]):
-                    aff1(inputP[k][(i//dim)*dim:(i//dim+1)*dim, (j//dim)*dim:(j//dim + 1)*dim])
-                    t.sleep(0.2)
+                    #aff1(inputP[k][(i//dim)*dim:(i//dim+1)*dim, (j//dim)*dim:(j//dim + 1)*dim])
+                    #t.sleep(0.2)
                     
                     if inputP[k][i,j]==np.max(inputP[k][(i//dim)*dim:(i//dim+1)*dim, (j//dim)*dim:(j//dim + 1)*dim]):
                         inputGrad[i,j,k]=outputGrad[i//dim,j//dim,k]
