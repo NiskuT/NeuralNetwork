@@ -20,7 +20,11 @@ class CNN:
                 "s" pour sigmoid
                             
         '''
+        num_filters = 1
         self.schema = schema
+        self.filters = np.random.randn(3, 3,num_filters) / 9
+        self.cachePooling = []
+        self.train =True
 
         
         
@@ -41,27 +45,59 @@ class CNN:
         """
         hpadding = imageBank.shape[0]%dim
         vpadding = imageBank.shape[1]%dim
-        print("hpadding:",hpadding)
-        print("vpadding:",vpadding)
-        print(imageBank.shape)
+
         
+        if self.train: self.cachePooling.append([])
         
-        newBank = np.zeros(((imageBank.shape[0]+hpadding)//dim,\
-                            (imageBank.shape[1]+vpadding)//dim, imageBank.shape[2]))
+        newBank = np.zeros(((imageBank.shape[0]+dim-hpadding)//dim,\
+                            (imageBank.shape[1]+dim-vpadding)//dim, imageBank.shape[2]))
 
         for k in range(newBank.shape[2]):
-            im = np.zeros(((imageBank.shape[0]+hpadding),(imageBank.shape[1]+vpadding)))
-            print(imageBank[:,:,k].shape)
-            print(im[hpadding//2:im.shape[0]-(hpadding//2+hpadding%2),vpadding//2:im.shape[1]-(vpadding//2+vpadding%2)].shape)
-            im[hpadding//2:im.shape[0]-(hpadding//2+hpadding%2),vpadding//2:im.shape[1]-(vpadding//2+vpadding%2)]\
-            += imageBank[:,:,k]
+            
+            im = np.zeros(((imageBank.shape[0]+dim-hpadding),(imageBank.shape[1]+dim-vpadding)))
+            
+            firstLine, lastLine=  (dim-hpadding)//2,  im.shape[0]-(hpadding//2+hpadding%2)
+            firstCol, lastCol  =  (dim-vpadding)//2,  im.shape[1]-(vpadding//2+vpadding%2)
+            
+            im[  firstLine:lastLine, firstCol:lastCol ] += imageBank[:,:,k]
+            
+            if self.train: self.cachePooling[-1].append(im)
+            
             for i in range(newBank.shape[0]):
                 for j in range(newBank.shape[1]):
+                    
                     if Type == "m":
                         newBank[i,j,k]=np.max(im[dim*i:dim*(i+1), dim*j:dim*(j+1)])
+                        
                     elif Type == "a":
                         newBank[i,j,k]=np.mean(im[dim*i:dim*(i+1), dim*j:dim*(j+1)])
+                        
+                        
+        if self.train: self.cachePooling[-1].append((firstLine, lastLine, firstCol,lastCol,dim))  
+        
         return newBank
+    
+    
+    
+    def poolingBackprop(self, outputGrad):
+        
+        firstLine, lastLine, firstCol,lastCol,dim = self.cachePooling[-1].pop()
+        inputP = self.cachePooling.pop()
+        
+        inputGrad = np.zeros((inputP[0].shape[0],inputP[0].shape[1], len(inputP)))
+
+        
+        for k in range(len(inputP)):
+            
+            for i in range(inputP[k].shape[0]):
+                
+                for j in range(inputP[k].shape[1]):
+                    
+                    if inputP[k][i,j]==np.max(inputP[k][(i//dim)*dim:(i//dim+dim)*dim, (j//dim)*dim:(j//dim + dim)*dim]):
+                        inputGrad[i,j,k]=outputGrad[i//dim,j//dim,k]
+        return inputGrad[firstLine:lastLine,   firstCol:lastCol,  : ]
+        
+    
     
     
     
@@ -92,7 +128,7 @@ class CNN:
             
         return np.transpose(np.array(output), axes=(1,2,0))
         
-        
+    
     def convWithSingleFilter(self, img, filter1):
         
         # création de l'image de sorie
@@ -112,7 +148,8 @@ class CNN:
 a = CNN()
 im = plt.imread("plage.jpg")
 filterL=[np.array([[-1,0,-1],[0,0,0],[-1,0,-1]])]
-filterL.append(np.array([[-1,0,1],[-1,0,1],[-1,0,1]]))
+filterL.append(np.array([[-1,0,1],[-2,0,2],[-1,0,1]]))
+#filterL.append(np.eye((3,3)))
 filterL.append(np.array([[0,1,0],[1,-1,1],[0,1,0]]))
 
 filterL.append(np.array([[-1,0,1],[-1,0,1],[-1,0,1]]))
@@ -120,13 +157,13 @@ filterL.append(np.ones((3,3)))
 filterL.append(np.array([[-1,-1,-1],[0,0,0],[1,1,1]]))
 #filterL.append(np.array([[-1,0,0,0,-1],[0,1,1,1,0],[0,1,-1,1,0],[0,1,1,1,0],[-1,0,0,0,-1]]))
 
-L= a.convolution(im, np.transpose(np.array(filterL), axes=(1,2,0)))
+#L= a.convolution(im, np.transpose(np.array(filterL), axes=(1,2,0)))
 
-
+'''
 for k in range(L.shape[2]):
     plt.figure()
     plt.imshow(L[:,:,k])
-    
+'''
 
 '''
 def filtre(k):
