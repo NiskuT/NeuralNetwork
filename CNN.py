@@ -2,7 +2,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-import time as t
+
 
 
 class CNN:
@@ -85,8 +85,7 @@ class CNN:
         #regarder np.amax
         
         firstLine, lastLine, firstCol,lastCol,dim = self.cachePooling[-1].pop()
-        inputP = self.cachePooling[-1]
-        #inputP = self.cachePooling.pop()
+        inputP = self.cachePooling.pop()
         
         inputGrad = np.zeros((inputP[0].shape[0],inputP[0].shape[1], len(inputP)))
 
@@ -96,11 +95,12 @@ class CNN:
             for i in range(inputP[k].shape[0]):
                 
                 for j in range(inputP[k].shape[1]):
-                    #aff1(inputP[k][(i//dim)*dim:(i//dim+1)*dim, (j//dim)*dim:(j//dim + 1)*dim])
-                    #t.sleep(0.2)
+
                     
                     if inputP[k][i,j]==np.max(inputP[k][(i//dim)*dim:(i//dim+1)*dim, (j//dim)*dim:(j//dim + 1)*dim]):
+                        
                         inputGrad[i,j,k]=outputGrad[i//dim,j//dim,k]
+                        
         return inputGrad[firstLine:lastLine,   firstCol:lastCol,  : ]
         
     
@@ -128,13 +128,23 @@ class CNN:
             # On attend également que filterBank soit une matrice 3D
             raise NameError("Erreur_filtre")
             
-        output = []
-        
-        for image in range(imageBank.shape[2]):
-            for filtre in range(filterBank.shape[2]):
-                output.append(self.convWithSingleFilter(imageBank[:,:,image], filterBank[:,:,filtre]))
             
-        return np.transpose(np.array(output), axes=(1,2,0))
+            
+        output = np.zeros((imageBank.shape[0]-filterBank.shape[0]+1, \
+                           imageBank.shape[1]-filterBank.shape[1]+1, \
+                           imageBank.shape[2] * filterBank.shape[2]  ))
+        
+        for image in range( imageBank.shape[2] ):
+            for filtre in range( filterBank.shape[2] ):
+                
+                output.append(self.convWithSingleFilter(imageBank[:,:,image], filterBank[:,:,filtre]))
+                
+                
+                
+                
+            
+        #return np.transpose(np.array(output), axes=(1,2,0))
+        return output
         
     
     def convWithSingleFilter(self, img, filter1):
@@ -144,21 +154,18 @@ class CNN:
         
         for k in range(out.shape[0]):
             for i in range(out.shape[1]):
-                try:
-                    for j in range(img.shape[2]):
-                        #print(k,i,j)
-                        #print(img[k:filter1.shape[0], i:filter1.shape[1],j])
-                        out[k,i]+=np.sum(img[k:k+filter1.shape[0], i:i+filter1.shape[1],j]*filter1)
-                except IndexError:
-                    out[k,i]+=np.sum(img[k:k+filter1.shape[0], i:i+filter1.shape[1]]*filter1)
+                out[k,i]+=np.sum(img[k:k+filter1.shape[0], i:i+filter1.shape[1]]*filter1)
+
         return out
     
     
 def aff(a):
-    for k in range(a.shape[0]):
-        for i in range(a.shape[1]):
-            print(int(a[k,i,0]), end='   ')
-        print()
+    for j in range(a.shape[2]):
+        for k in range(a.shape[0]):
+            for i in range(a.shape[1]):
+                print(int(a[k,i,j]), end='   ')
+            print()
+        print("\n")
         
 def aff1(a):
     for k in range(a.shape[0]):
@@ -168,23 +175,24 @@ def aff1(a):
         
 a = CNN()
 im = plt.imread("plage.jpg")
-filterL=[np.array([[-1,0,-1],[0,0,0],[-1,0,-1]])]
-filterL.append(np.array([[-1,0,1],[-2,0,2],[-1,0,1]]))
+filterL=[]
+#filterL=[np.array([[-1,0,-1],[0,0,0],[-1,0,-1]])]
+#filterL.append(np.array([[-1,0,1],[-2,0,2],[-1,0,1]]))
 #filterL.append(np.eye((3,3)))
 filterL.append(np.array([[0,1,0],[1,-1,1],[0,1,0]]))
 
-filterL.append(np.array([[-1,0,1],[-1,0,1],[-1,0,1]]))
-filterL.append(np.ones((3,3)))
-filterL.append(np.array([[-1,-1,-1],[0,0,0],[1,1,1]]))
+#filterL.append(np.array([[-1,0,1],[-1,0,1],[-1,0,1]]))
+#filterL.append(np.ones((3,3)))
+#filterL.append(np.array([[-1,-1,-1],[0,0,0],[1,1,1]]))
 #filterL.append(np.array([[-1,0,0,0,-1],[0,1,1,1,0],[0,1,-1,1,0],[0,1,1,1,0],[-1,0,0,0,-1]]))
 
-#L= a.convolution(im, np.transpose(np.array(filterL), axes=(1,2,0)))
+L= a.convolution(im, np.transpose(np.array(filterL), axes=(1,2,0)))
 
-'''
+
 for k in range(L.shape[2]):
     plt.figure()
     plt.imshow(L[:,:,k])
-'''
+
 
 '''
 def filtre(k):
