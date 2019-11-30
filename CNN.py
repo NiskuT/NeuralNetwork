@@ -25,6 +25,7 @@ class CNN:
         self.schema = schema
         self.filters = np.random.randn(3, 3,num_filters) / 9
         self.cachePooling = []
+        self.cacheConv = []
         self.train =True
 
         
@@ -48,7 +49,7 @@ class CNN:
         vpadding = imageBank.shape[1]%dim
 
         
-        if self.train: self.cachePooling.append([])
+        if self.train: self.cachePooling.append(np.zeros(( (imageBank.shape[0]+dim-hpadding),(imageBank.shape[1]+dim-vpadding), imageBank.shape[2])))
         
         newBank = np.zeros(((imageBank.shape[0]+dim-hpadding)//dim,\
                             (imageBank.shape[1]+dim-vpadding)//dim, imageBank.shape[2]))
@@ -62,7 +63,7 @@ class CNN:
             
             im[  firstLine:lastLine, firstCol:lastCol ] += imageBank[:,:,k]
             
-            if self.train: self.cachePooling[-1].append(im)
+            if self.train: self.cachePooling[-1][:,:,k]+=im
             
             for i in range(newBank.shape[0]):
                 for j in range(newBank.shape[1]):
@@ -74,7 +75,7 @@ class CNN:
                         newBank[i,j,k]=np.mean(im[dim*i:dim*(i+1), dim*j:dim*(j+1)])
                         
                         
-        if self.train: self.cachePooling[-1].append((firstLine, lastLine, firstCol,lastCol,dim))  
+        if self.train: self.cachePooling.append((firstLine, lastLine, firstCol,lastCol,dim))  
         
         return newBank
     
@@ -84,20 +85,20 @@ class CNN:
         
         #regarder np.amax
         
-        firstLine, lastLine, firstCol,lastCol,dim = self.cachePooling[-1].pop()
+        firstLine, lastLine, firstCol,lastCol,dim = self.cachePooling.pop()
         inputP = self.cachePooling.pop()
-        
-        inputGrad = np.zeros((inputP[0].shape[0],inputP[0].shape[1], len(inputP)))
+
+        inputGrad = np.zeros(inputP.shape)
 
         
-        for k in range(len(inputP)):
+        for k in range(inputP.shape[2]):
             
-            for i in range(inputP[k].shape[0]):
+            for i in range(inputP.shape[0]):
                 
-                for j in range(inputP[k].shape[1]):
+                for j in range(inputP.shape[1]):
 
                     
-                    if inputP[k][i,j]==np.max(inputP[k][(i//dim)*dim:(i//dim+1)*dim, (j//dim)*dim:(j//dim + 1)*dim]):
+                    if inputP[i,j,k]==np.max(inputP[(i//dim)*dim:(i//dim+1)*dim, (j//dim)*dim:(j//dim + 1)*dim, k]):
                         
                         inputGrad[i,j,k]=outputGrad[i//dim,j//dim,k]
                         
@@ -128,7 +129,7 @@ class CNN:
             # On attend également que filterBank soit une matrice 3D
             raise NameError("Erreur_filtre")
             
-            
+        self.cacheConv.append(imageBank)
             
         output = np.zeros((imageBank.shape[0]-filterBank.shape[0]+1, \
                            imageBank.shape[1]-filterBank.shape[1]+1, \
@@ -137,13 +138,9 @@ class CNN:
         for image in range( imageBank.shape[2] ):
             for filtre in range( filterBank.shape[2] ):
                 
-                output.append(self.convWithSingleFilter(imageBank[:,:,image], filterBank[:,:,filtre]))
+                output[:,:,filterBank.shape[2]*image+filtre]=\
+                self.convWithSingleFilter(imageBank[:,:,image], filterBank[:,:,filtre])
                 
-                
-                
-                
-            
-        #return np.transpose(np.array(output), axes=(1,2,0))
         return output
         
     
@@ -157,6 +154,10 @@ class CNN:
                 out[k,i]+=np.sum(img[k:k+filter1.shape[0], i:i+filter1.shape[1]]*filter1)
 
         return out
+    
+    def convBackprop(self, grad):
+        
+        pass
     
     
 def aff(a):
@@ -177,16 +178,16 @@ a = CNN()
 im = plt.imread("plage.jpg")
 filterL=[]
 #filterL=[np.array([[-1,0,-1],[0,0,0],[-1,0,-1]])]
-#filterL.append(np.array([[-1,0,1],[-2,0,2],[-1,0,1]]))
+filterL.append(np.array([[-1,0,1],[-2,0,2],[-1,0,1]]))
 #filterL.append(np.eye((3,3)))
-filterL.append(np.array([[0,1,0],[1,-1,1],[0,1,0]]))
+#filterL.append(np.array([[0,1,0],[1,-1,1],[0,1,0]]))
 
 #filterL.append(np.array([[-1,0,1],[-1,0,1],[-1,0,1]]))
 #filterL.append(np.ones((3,3)))
 #filterL.append(np.array([[-1,-1,-1],[0,0,0],[1,1,1]]))
 #filterL.append(np.array([[-1,0,0,0,-1],[0,1,1,1,0],[0,1,-1,1,0],[0,1,1,1,0],[-1,0,0,0,-1]]))
 
-L= a.convolution(im, np.transpose(np.array(filterL), axes=(1,2,0)))
+#L= a.convolution(im, np.transpose(np.array(filterL), axes=(1,2,0)))
 
 
 for k in range(L.shape[2]):
