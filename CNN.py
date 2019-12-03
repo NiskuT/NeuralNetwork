@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+#from numba import cuda
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -23,10 +24,12 @@ class CNN:
         '''
         num_filters = 1
         self.schema = schema
-        self.filters = np.random.randn(3, 3,num_filters) / 9
+        #self.filters = np.random.randn(3, 3,num_filters) / 9
+        self.filters = []
         self.cachePooling = []
         self.cacheConv = []
         self.train =True
+        self.learningRate=0.01
 
         
         
@@ -36,7 +39,7 @@ class CNN:
     
     def relu(self,x):
         return max(0,x)
-    
+
     def pooling(self, Type, imageBank, dim):
         """
             Fonction de pooling pour image 2D (nuance de gris)
@@ -107,8 +110,8 @@ class CNN:
     
     
     
-    
-    def convolution(self, imageBank, filterBank):
+
+    def convolution(self, imageBank, filterBankID):
         '''
             imageBank: une matrice avec comme profondeur le nombre d'images 2D
             à traiter. Pour la première convolution on traite indépendent R,G,B
@@ -119,6 +122,11 @@ class CNN:
         '''
         
         ### regarder flatten()
+        if self.train:
+            self.cacheConv.append(imageBank)
+            self.cacheConv.append(filterBankID)
+            
+        filterBank = self.filters[filterBankID]
 
         # verification des filtres
         if filterBank.shape[0] != filterBank.shape[1] or \
@@ -137,13 +145,13 @@ class CNN:
         
         for image in range( imageBank.shape[2] ):
             for filtre in range( filterBank.shape[2] ):
-                
+                print(image, filtre)
                 output[:,:,filterBank.shape[2]*image+filtre]=\
                 self.convWithSingleFilter(imageBank[:,:,image], filterBank[:,:,filtre])
                 
         return output
         
-    
+
     def convWithSingleFilter(self, img, filter1):
         
         # création de l'image de sorie
@@ -155,9 +163,36 @@ class CNN:
 
         return out
     
+    
+    
+    
+    
     def convBackprop(self, grad):
         
-        pass
+        filterBankID=self.cacheConv.pop()
+        inp = self.cacheConv.pop()
+        
+        inpGrad = np.zeros(inp.shape)
+        filterGrad = np.zeros(self.filters[filterBankID].shape)
+        
+
+        
+        for i in range(grad.shape[0]):
+            for j in range(grad.shape[1]):
+                for k in range(grad.shape[2]):
+                    
+                    filterGrad[:,:,k%filterGrad.shape[2]] += grad[i,j,k] * inp[i:i+filterGrad.shape[0],j:j+filterGrad.shape[1],k]
+                    inpGrad[i:i+filterGrad.shape[0],j:j+filterGrad.shape[1],k//filterGrad.shape[2]]+=grad[i,j,k]*self.filters[filterBankID][k%filterGrad.shape[2]]
+                    
+        self.filters[filterBankID] -= self.learningRate * filterGrad
+        
+        return inpGrad
+        
+        
+'''
+T=A.flatten('F')
+aff(T.reshape((3,3,3), order='F'))
+'''
     
     
 def aff(a):
@@ -180,20 +215,21 @@ filterL=[]
 #filterL=[np.array([[-1,0,-1],[0,0,0],[-1,0,-1]])]
 filterL.append(np.array([[-1,0,1],[-2,0,2],[-1,0,1]]))
 #filterL.append(np.eye((3,3)))
-#filterL.append(np.array([[0,1,0],[1,-1,1],[0,1,0]]))
+filterL.append(np.array([[0,1,0],[1,-1,1],[0,1,0]]))
 
 #filterL.append(np.array([[-1,0,1],[-1,0,1],[-1,0,1]]))
 #filterL.append(np.ones((3,3)))
 #filterL.append(np.array([[-1,-1,-1],[0,0,0],[1,1,1]]))
 #filterL.append(np.array([[-1,0,0,0,-1],[0,1,1,1,0],[0,1,-1,1,0],[0,1,1,1,0],[-1,0,0,0,-1]]))
 
-#L= a.convolution(im, np.transpose(np.array(filterL), axes=(1,2,0)))
+a.filters.append(np.transpose(np.array(filterL), axes=(1,2,0)))
+
+L= a.convolution(im, 0)
 
 
 for k in range(L.shape[2]):
     plt.figure()
     plt.imshow(L[:,:,k])
-
 
 '''
 def filtre(k):
