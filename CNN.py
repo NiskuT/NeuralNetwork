@@ -3,7 +3,8 @@
 from numba import cuda
 import numpy as np
 import matplotlib.pyplot as plt
-
+from math import ceil
+import time as t
 
 
 class CNN:
@@ -33,8 +34,8 @@ class CNN:
         x=0
         for k in range(len(schema)):
             if schema[k][0] == 'c':
-                self.filters.append(np.random.randn(3, 3,int(schema[k][1])) / 9)
-                schema[k] = 'c'+str(x)
+                self.filters.append(np.random.randn(3, 3,int(schema[k][1:])) / 9)
+                self.schema[k] = 'c'+str(x)
                 x+=1
                 # regarder pk diviser par 9 
         
@@ -114,10 +115,49 @@ class CNN:
         return inputGrad[firstLine:lastLine,   firstCol:lastCol,  : ]
         
     
-    
-    
-    
     def convolution(self, imageBank, filterBankID):
+        
+        if self.train:
+            self.cacheConv.append(imageBank)
+            self.cacheConv.append(filterBankID)
+            
+        filterBank = self.filters[filterBankID]
+        
+        @cuda.jit
+        def kernel(I,F,O):
+            tx,ty,tz = cuda.threadIdx.x,cuda.threadIdx.y,cuda.threadIdx.z
+            tblockx, tblocky,tblockz = cuda.blockIdx.x,cuda.blockIdx.y,cuda.blockIdx.z
+    
+            x,y,z=tx+(tblockx%(cuda.gridDim.x//3)*cuda.blockDim.x),ty+(tblocky%(cuda.gridDim.y//3)*cuda.blockDim.y),tz+tblockz*cuda.blockDim.z
+    
+            i,j = tblockx//(cuda.gridDim.x//3),tblocky//(cuda.gridDim.y//3)
+    
+            if(x<O.shape[0] and y<O.shape[1] and z<O.shape[2]):
+        
+                O[x,y,z] += I[x+i,y+j,z//F.shape[2]]*F[i,j,z%F.shape[2]]
+                
+                
+        IMG = np.ascontiguousarray(imageBank)
+        filtre = np.ascontiguousarray(filterBank)        
+        
+        outx,outy,outz = IMG.shape[0]-filtre.shape[0]+1, IMG.shape[1]-filtre.shape[1]+1, IMG.shape[2] * filtre.shape[2]
+        
+        IMGGlobal = cuda.to_device(IMG)
+        filtreGlobal = cuda.to_device(filtre)        
+        sortieGlobal = cuda.device_array(( outx,outy,outz ))
+        
+        threadParBlock = (16,16,4)
+        blocksParGrille = (3*int(ceil(outx/16)),3*int(ceil(outy/16)), int(ceil(outz/4)))
+        
+        kernel[blocksParGrille, threadParBlock](IMGGlobal,filtreGlobal,sortieGlobal)
+
+        out = sortieGlobal.copy_to_host()
+        
+        return out       
+        
+        
+        
+    def convolutionWithoutGPU(self, imageBank, filterBankID):
         '''
             imageBank: une matrice avec comme profondeur le nombre d'images 2D
             à traiter. Pour la première convolution on traite indépendent R,G,B
@@ -126,11 +166,10 @@ class CNN:
             filterBankID: l'indice de la banque de filtre
         '''
         
-        ### regarder flatten()
+
         if self.train:
             self.cacheConv.append(imageBank)
             self.cacheConv.append(filterBankID)
-            self.cacheConv.append(imageBank)
             
         filterBank = self.filters[filterBankID]
         
@@ -196,22 +235,39 @@ class CNN:
         for i in range(grad.shape[0]):
             for j in range(grad.shape[1]):
                 for k in range(grad.shape[2]):
-                    
+                    print(self.filters[filterBankID].shape)
                     filterGrad[:,:,k%filterGrad.shape[2]] += grad[i,j,k] * inp[i:i+filterGrad.shape[0],j:j+filterGrad.shape[1],k]
-                    inpGrad[i:i+filterGrad.shape[0],j:j+filterGrad.shape[1],k//filterGrad.shape[2]] += grad[i,j,k]*self.filters[filterBankID][k%filterGrad.shape[2]]
+                    inpGrad[i:i+filterGrad.shape[0],j:j+filterGrad.shape[1],k//filterGrad.shape[2]] += grad[i,j,k]*self.filters[filterBankID][:,:,k%filterGrad.shape[2]]
                     
         self.filters[filterBankID] -= self.learningRate * filterGrad
         
         return inpGrad
     
-    def convBackpropWithSingleFilter(self):
-        pass
+def testeur():
+    L = ['c'+str(k) for k in range(1,33)]
+    cres = CNN(L)
+    im = plt.imread("plage.jpg")
+    x = []
+    y = []
+    
+    for k in range(len(L)):
+        x.append(k+1)
+        print("Filtre",k+1)
+        start1 = t.time()
+        cres.convolution(im, k)
+        end1 = t.time()
+        t1 = (end1 - start1)
         
+        start2 = t.time()
+        cres.convolutionWithoutGPU(im, k)    
+        end2 = t.time()
+        t2 = (end2 - start2)
+        t3 = t2/t1
+        y.append(t3)
+        
+    plt.plot(x,y)
+    return x,y
 
-        
-    
-    
-        
         
 '''
 T=A.flatten('F')
