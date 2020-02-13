@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+# -*- coding: utf-8 -*-
+
 import time as t
 
 from numba import cuda
@@ -8,26 +10,24 @@ import matplotlib.pyplot as plt
 from math import ceil
 
 
-def convBackprop(grad):
+def convBackprop(grad,filtre,inp):
     
-    filterBankID=self.cacheConv.pop()
-    inp = self.cacheConv.pop()
-    
-    inpGrad = np.zeros(inp.shape)
-    filterGrad = np.zeros(self.filters[filterBankID].shape)
+
+    #inpGrad = np.zeros(inp.shape)
+    filterGrad = np.zeros(filtre.shape)
     
 
     
     for i in range(grad.shape[0]):
         for j in range(grad.shape[1]):
             for k in range(grad.shape[2]):
+
+                filterGrad[:,:,k%filterGrad.shape[2]] += grad[i,j,k] * inp[i:i+filterGrad.shape[0],j:j+filterGrad.shape[1],k//filtre.shape[2]]
+                #inpGrad[i:i+filterGrad.shape[0],j:j+filterGrad.shape[1],k//filterGrad.shape[2]] += grad[i,j,k]*filtre[k%filterGrad.shape[2]]
                 
-                filterGrad[:,:,k%filterGrad.shape[2]] += grad[i,j,k] * inp[i:i+filterGrad.shape[0],j:j+filterGrad.shape[1],k]
-                inpGrad[i:i+filterGrad.shape[0],j:j+filterGrad.shape[1],k//filterGrad.shape[2]] += grad[i,j,k]*self.filters[filterBankID][k%filterGrad.shape[2]]
-                
-    self.filters[filterBankID] -= self.learningRate * filterGrad
+    #filtre -= filterGrad
     
-    return inpGrad
+    return filterGrad
 
 @cuda.jit
 def conv(I,F,O):
@@ -48,8 +48,9 @@ def conv(I,F,O):
  
 im = plt.imread("plage.jpg")
 
-IMG = np.ascontiguousarray(im)
-filterL = [np.array([[0,1,0],[1,-1,1],[0,1,0]]), np.array([[-1,-1,-1],[0,0,0],[1,1,1]]), np.array([[0,1,0],[1,-1,1],[0,1,0]])]
+#IMG = np.ascontiguousarray(np.copy(im))
+IMG = np.random.randint(2, size=(5,5,2))
+filterL = [np.array([[0,1,0],[1,-1,1],[0,1,0]]),  np.array([[0,1,0],[1,-1,1],[0,1,0]])]
 filtre = np.ascontiguousarray(np.transpose(np.array(filterL), axes=(1,2,0)))
 
 
@@ -74,7 +75,7 @@ out = sortieGlobal.copy_to_host()
 
 
 
-outGrad = cuda.to_device(np.ascontiguousarray(np.random.randn(*out.shape))) # ENTREE 3
+outGrad = cuda.to_device(np.ascontiguousarray(np.random.randint(2, size=out.shape))) # ENTREE 3
 
 inpGrad = cuda.device_array(IMG.shape)          # SORTIE 1
 filtreGrad = cuda.device_array(filtre.shape)    # SORTIE 2
@@ -93,22 +94,17 @@ def convBack(I,F,Og, Ig, Fg):
     
     if(x<Og.shape[0] and y<Og.shape[1] and z<Og.shape[2]):
         
-        Ig[x,y,z] += I[x+i,y+j,z//F.shape[2]]*F[i,j,z%F.shape[2]]
-        #Fg[:,:,(z%Fg.shape[2])] += Og[x,y,z]*I[x:x+3,y:y+3, z//Fg.shape[2]]
+        #Ig[x+i,y+j,z] += I[x+i,y+j,z//F.shape[2]]*F[i,j,z%F.shape[2]]
+        Fg[i,j,(z%Fg.shape[2])] += Og[x,y,z]*I[x+i,y+j, z//Fg.shape[2]]
+
 
 
 threadParBlock = (16,16,4)
 blocksParGrille = (3*int(ceil(out.shape[0]/16)),3*int(ceil(out.shape[1]/16)), int(ceil(out.shape[2]/4)))
 
 start = t.time()
-conv[blocksParGrille, threadParBlock](IMGGlobal,filtreGlobal,outGrad, inpGrad, filtreGrad)
+convBack[blocksParGrille, threadParBlock](IMGGlobal,filtreGlobal,outGrad, inpGrad, filtreGrad)
 end = t.time()
 print("Temps = %s" % (end - start))
 
-
-
-
-
-
-
-
+test = filtreGrad.copy_to_host()
